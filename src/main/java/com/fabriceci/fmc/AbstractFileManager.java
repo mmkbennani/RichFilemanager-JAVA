@@ -114,8 +114,9 @@ public abstract class AbstractFileManager implements IFileManager {
                         break;
                     case "readfolder":
                         final String typeParam = request.getParameter("type");
+                        final String right_folder = request.getParameter("right_folder");
                         if (!StringUtils.isEmpty(pathParam)) {
-                            responseData = actionReadFolder(pathParam, typeParam);
+                            responseData = actionReadFolder(pathParam, typeParam,right_folder);
                         }
                         break;
                     case "seekfolder":
@@ -274,7 +275,7 @@ public abstract class AbstractFileManager implements IFileManager {
     }
 
     @Override
-    public List<FileData> actionReadFolder(String path, String type) throws FileManagerException {
+    public List<FileData> actionReadFolder(String path, String type, String right_folder) throws FileManagerException {
         throw new UnsupportedOperationException();
     }
 
@@ -360,6 +361,35 @@ public abstract class AbstractFileManager implements IFileManager {
         }
     }
 
+    protected final boolean isAllowedFolder (String filePath,boolean isdir, String right_folder) {
+    	String[] arrayFilePath = filePath.split("/");
+    	String[] arrayRightFolder = right_folder.split("/");
+    	
+		if((arrayRightFolder.length < arrayFilePath.length) && (arrayRightFolder[1].equalsIgnoreCase(arrayFilePath[1]))) {
+			return true;
+		}
+		else {
+			boolean issame = true;
+			
+			if(isdir) {
+				for(int j=0;j<arrayFilePath.length;j++) {
+					issame = issame && arrayRightFolder[j].equalsIgnoreCase(arrayFilePath[j]);
+				} 
+			}else {
+				for(int j=0;j<arrayFilePath.length-1;j++) {
+					if(arrayRightFolder.length > j && arrayRightFolder[j].length() != 0 && arrayFilePath[j].length() != 0)
+						issame = issame && arrayRightFolder[j].equalsIgnoreCase(arrayFilePath[j]);
+					else {
+						issame = false;
+					}
+				} 
+			}
+			
+			return issame;
+		}
+    }
+    
+    
     protected final boolean isAllowedPattern(String name, boolean isDir) throws FileManagerException {
 
         boolean policyAllow = Boolean.parseBoolean(propertiesConfig.getProperty("patterns.policy.allow"));

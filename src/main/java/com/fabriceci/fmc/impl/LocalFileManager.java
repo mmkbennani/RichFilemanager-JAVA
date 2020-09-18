@@ -8,7 +8,10 @@ import com.fabriceci.fmc.error.FileManagerException;
 import com.fabriceci.fmc.model.FileAttributes;
 import com.fabriceci.fmc.model.FileData;
 import com.fabriceci.fmc.model.FileType;
+import com.fabriceci.fmc.model.OneRightFolder;
+import com.fabriceci.fmc.model.RightFolder;
 import com.fabriceci.fmc.util.*;
+import com.google.gson.Gson;
 
 import javax.imageio.ImageIO;
 import javax.servlet.ServletException;
@@ -60,9 +63,13 @@ public class LocalFileManager extends AbstractFileManager {
     }
 
     @Override
-    public List<FileData> actionReadFolder(String path, String type) throws FileManagerException {
-
+    public List<FileData> actionReadFolder(String path, String type, String right_folder) throws FileManagerException {
+    	
         File dir = getFile(path);
+        
+        Gson g = new Gson();
+        RightFolder jsonright = new RightFolder();
+        jsonright = (RightFolder)g.fromJson(right_folder, RightFolder.class);
 
         checkPath(dir);
         checkReadPermission(dir);
@@ -90,19 +97,25 @@ public class LocalFileManager extends AbstractFileManager {
                 file = new File(docRoot.getPath() + path + f);
                 filePath = path + f;
                 String filename = file.getName();
-
+                ArrayList<OneRightFolder> folder = jsonright.getFolder();
                 if (file.isDirectory()) {
-                    if (isAllowedPattern(filename, file.isDirectory())) {
-                        fileDataList.add(getFileInfo(filePath + "/"));
-                    }
-                } else if (isAllowedPattern(filename, file.isDirectory())) {
-                    if (type == null || type.equals("images") && isAllowedImageExt(getExtension(filename))) {
-                        fileDataList.add(getFileInfo(filePath));
-                    }
-                }
+                	for(int k = 0;k<folder.size();k++) {
+                		if (isAllowedPattern(filename, file.isDirectory()) && isAllowedFolder(filePath,file.isDirectory(),folder.get(k).getFolder_name())) {
+                            fileDataList.add(getFileInfo(filePath + "/"));
+                        }
+                	}
+                    
+                } else {
+                	for(int k = 0;k<folder.size();k++) {
+	                	if (isAllowedPattern(filename, file.isDirectory()) && isAllowedFolder(filePath,file.isDirectory(), folder.get(k).getFolder_name())) {
+	                		if (type == null || type.equals("images") && isAllowedImageExt(getExtension(filename))) {
+		                        fileDataList.add(getFileInfo(filePath));
+		                    }
+		                }
+                	}
+            	}
             }
         }
-
         return fileDataList;
     }
 
