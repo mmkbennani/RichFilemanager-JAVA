@@ -21,6 +21,8 @@ public interface IFileManager {
     List<FileData> actionReadFolder(String path, String type, String right_folder) throws FileManagerException;
 
     FileData actionMove(String sourcePath, String targetPath) throws FileManagerException;
+    
+    FileData actionMoveDelete(String sourcePath, String targetPath) throws FileManagerException;
 
     FileData actionDelete(String path) throws FileManagerException;
 

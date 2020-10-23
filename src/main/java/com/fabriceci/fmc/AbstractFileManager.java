@@ -114,7 +114,18 @@ public abstract class AbstractFileManager implements IFileManager {
                         break;
                     case "readfolder":
                         final String typeParam = request.getParameter("type");
-                        final String right_folder = request.getParameter("right_folder");
+                        String right_folder = request.getParameter("right_folder");
+                        
+                        if(right_folder != null && right_folder.length()!=0) {
+                        	
+                        }else {
+                        	String foldername = Optional.ofNullable(pathParam)
+                        			   .filter(sStr -> sStr.length() != 0)
+                        			   .map(sStr -> sStr.substring(0, sStr.length() - 1))
+                        			   .orElse(pathParam);;
+                        	right_folder = "{\"folder\":[{\"folder_name\":\""+foldername+"\",\"writable\":\"1\",\"readable\":\"1\"}]}";
+                        }
+                        
                         if (!StringUtils.isEmpty(pathParam)) {
                             responseData = actionReadFolder(pathParam, typeParam,right_folder);
                         }
@@ -146,9 +157,25 @@ public abstract class AbstractFileManager implements IFileManager {
                             responseData = actionMove(sourcePath, targetPath);
                         }
                         break;
-                    case "delete":
+                   case "move_delete":
+                        sourcePath = cleanPath(request.getParameter("old"));
+                        targetPath = cleanPath(request.getParameter("new"));
+                        if (!StringUtils.isEmpty(sourcePath) && !StringUtils.isEmpty(targetPath)) {
+                            responseData = actionMoveDelete(sourcePath, targetPath);
+                        }
+                        break;    
+                   case "delete_upload":
                         if (!StringUtils.isEmpty(pathParam)) {
                             responseData = actionDelete(pathParam);
+                            
+                        }
+                        break;
+                    case "delete":
+                        if (!StringUtils.isEmpty(pathParam)) {
+                        	sourcePath = cleanPath(request.getParameter("old"));
+                            targetPath = cleanPath(request.getParameter("new"));
+                            responseData = actionMoveDelete(sourcePath, "/Archive/");//actionMove actionDelete(pathParam);
+                            
                         }
                         break;
                     case "addfolder":
@@ -183,6 +210,7 @@ public abstract class AbstractFileManager implements IFileManager {
                         throw new FileManagerException(ClientErrorMessage.MODE_ERROR);
                     case "upload":
                         if (!StringUtils.isEmpty(pathParam)) {
+                        	String token = request.getHeader("Authorization");
                             responseData = actionUpload(request, pathParam);
                         }
                         break;
@@ -293,6 +321,11 @@ public abstract class AbstractFileManager implements IFileManager {
     public FileData actionMove(String sourcePath, String targetPath) throws FileManagerException {
         throw new UnsupportedOperationException();
     }
+    
+    @Override
+    public FileData actionMoveDelete(String sourcePath, String targetPath) throws FileManagerException {
+        throw new UnsupportedOperationException();
+    }
 
     @Override
     public FileData actionGetImage(HttpServletResponse response, String path, Boolean thumbnail) throws FileManagerException {
@@ -361,16 +394,18 @@ public abstract class AbstractFileManager implements IFileManager {
         }
     }
 
-    protected final boolean isAllowedFolder (String filePath,boolean isdir, String right_folder) {
+    protected final OneRightFolder isAllowedFolder (String filePath,boolean isdir, OneRightFolder right_folder) {
     	String[] arrayFilePath = filePath.split("/");
-    	String[] arrayRightFolder = right_folder.split("/");
-    	
-		if((arrayRightFolder.length < arrayFilePath.length) && (arrayRightFolder[1].equalsIgnoreCase(arrayFilePath[1]))) {
-			return true;
+    	String[] arrayRightFolder = right_folder.getFolder_name().split("/");
+    	OneRightFolder unOneRightFolder = null;
+    	boolean issame = true;
+    	if(arrayRightFolder.length == 0) {
+			issame =  true;
+		}
+    	else if((arrayRightFolder.length < arrayFilePath.length) && ((arrayRightFolder.length <=2?arrayRightFolder[1].equalsIgnoreCase(arrayFilePath[1]):arrayRightFolder[2].equalsIgnoreCase(arrayFilePath[2])))) {
+			issame =  true;
 		}
 		else {
-			boolean issame = true;
-			
 			if(isdir) {
 				for(int j=0;j<arrayFilePath.length;j++) {
 					issame = issame && arrayRightFolder[j].equalsIgnoreCase(arrayFilePath[j]);
@@ -384,9 +419,12 @@ public abstract class AbstractFileManager implements IFileManager {
 					}
 				} 
 			}
-			
-			return issame;
 		}
+		if(issame) {
+			unOneRightFolder = right_folder;
+			
+		}
+		return unOneRightFolder;
     }
     
     

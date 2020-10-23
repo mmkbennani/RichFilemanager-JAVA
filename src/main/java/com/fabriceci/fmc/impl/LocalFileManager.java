@@ -24,6 +24,9 @@ import java.io.*;
 import java.net.URLEncoder;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -92,24 +95,102 @@ public class LocalFileManager extends AbstractFileManager {
 
         List<FileData> fileDataList = new ArrayList<>();
         if (files != null) {
+        	/*
+        	if(files.length == 0) {
+        		ArrayList<OneRightFolder> folder = jsonright.getFolder();
+        		String filename = dir.getName();
+        		for(int k = 0;k<folder.size();k++) {
+            		OneRightFolder un = isAllowedFolder(path,dir.isDirectory(),folder.get(k));
+            		if (isAllowedPattern(filename, dir.isDirectory()) && un != null) {
+            			boolean isHere = false;
+            			for(int i = 0; i < fileDataList.size(); i++){
+            			  if(fileDataList.get(i).getId().contains(filename))
+            				 isHere=true;
+            			}
+            			if (!isHere)
+            				fileDataList.add(getFileInfo(path + "/"));
+                    }
+            	}
+        	}
+        	
+        	
+        	 private String id;
+    private FileType type;
+    private FileAttributes attributes;
+       */ 	
+        	ArrayList<OneRightFolder> folder = jsonright.getFolder();
+        	if(files.length == 0|| files ==  null) {
+        		
+        		
+        		filePath = path;
+        		
+        		for(int k = 0;k<folder.size();k++) {
+            		OneRightFolder un = isAllowedFolder(filePath,true,folder.get(k));
+            		if(un != null) {
+            			
+            			if(un.getWritable().equalsIgnoreCase("1")) {
+            				FileAttributes file_attributes = new FileAttributes();
+                    		file_attributes.setReadable(1);
+                    		file_attributes.setWritable(1);
+                    		FileData fileDate = new FileData();
+                    		//"",FileType.folder,file_attributes
+                    		fileDate.setId("not_real_folder");
+                    		fileDate.setType(FileType.folder);
+                    		fileDate.setAttributes(file_attributes);
+                    		fileDataList.add(fileDate);
+            			}else {
+            				FileAttributes file_attributes = new FileAttributes();
+                    		file_attributes.setReadable(1);
+                    		file_attributes.setWritable(0);
+                    		
+                    		
+                    		FileData fileDate = new FileData();
+                    		//"",FileType.folder,file_attributes
+                    		fileDate.setId("not_real_folder");
+                    		fileDate.setType(FileType.folder);
+                    		fileDate.setAttributes(file_attributes);
+                    		fileDataList.add(fileDate);
+            			}
+            			
+            		}
+        		}
+        		
+        		
+        	}
+        	
+        	
             for (String f : files) {
 
                 file = new File(docRoot.getPath() + path + f);
                 filePath = path + f;
                 String filename = file.getName();
-                ArrayList<OneRightFolder> folder = jsonright.getFolder();
+                
                 if (file.isDirectory()) {
                 	for(int k = 0;k<folder.size();k++) {
-                		if (isAllowedPattern(filename, file.isDirectory()) && isAllowedFolder(filePath,file.isDirectory(),folder.get(k).getFolder_name())) {
-                            fileDataList.add(getFileInfo(filePath + "/"));
+                		OneRightFolder un = isAllowedFolder(filePath,file.isDirectory(),folder.get(k));
+                		if (isAllowedPattern(filename, file.isDirectory()) && un != null) {
+                			boolean isHere = false;
+                			for(int i = 0; i < fileDataList.size(); i++){
+                			  if(fileDataList.get(i).getId().contains(filename))
+                				 isHere=true;
+                			}
+                			if (!isHere)
+                				fileDataList.add(getFileInfo(filePath + "/",un));
                         }
                 	}
                     
                 } else {
                 	for(int k = 0;k<folder.size();k++) {
-	                	if (isAllowedPattern(filename, file.isDirectory()) && isAllowedFolder(filePath,file.isDirectory(), folder.get(k).getFolder_name())) {
-	                		if (type == null || type.equals("images") && isAllowedImageExt(getExtension(filename))) {
-		                        fileDataList.add(getFileInfo(filePath));
+                		OneRightFolder un = isAllowedFolder(filePath,file.isDirectory(),folder.get(k));
+                		if (isAllowedPattern(filename, file.isDirectory()) && un != null) {
+                			if (type == null || type.equals("images") && isAllowedImageExt(getExtension(filename))) {
+                				boolean isHere = false;
+                    			for(int i = 0; i < fileDataList.size(); i++){
+                    			  if(fileDataList.get(i).getId().contains(filename))
+                    				 isHere=true;
+                    			}
+                    			if (!isHere)
+                    				fileDataList.add(getFileInfo(filePath,un));
 		                    }
 		                }
                 	}
@@ -119,6 +200,7 @@ public class LocalFileManager extends AbstractFileManager {
         return fileDataList;
     }
 
+    
     @Override
     public FileData actionGetInfo(String path) throws FileManagerException {
 
@@ -141,6 +223,78 @@ public class LocalFileManager extends AbstractFileManager {
 
     }
 
+    
+    public FileData getFileInfo(String path, OneRightFolder foldername) throws FileManagerException {
+
+        FileData fileData = new FileData();
+        fileData.setId(path);
+        FileAttributes fileAttributes = new FileAttributes();
+        
+        String[] arrayFilePath = path.split("/");
+    	String[] arrayRightFolder = foldername.getFolder_name().split("/");
+        
+        // get file
+        File file = getFile(path);
+
+        if (file.isDirectory() && !path.endsWith("/")) {
+            throw new FileManagerException("Error reading the file: " + file.getAbsolutePath());
+        }
+
+        BasicFileAttributes attr;
+        try {
+            attr = Files.readAttributes(file.toPath(), BasicFileAttributes.class);
+        } catch (IOException e) {
+            throw new FileManagerException("Error reading the file: " + file.getAbsolutePath(), e);
+        }
+
+        if(arrayFilePath.length<arrayRightFolder.length) {
+        	fileAttributes.setReadable(1);
+        	fileAttributes.setWritable(0);
+        }else {
+        	
+        	if(arrayFilePath.length == 1 && arrayRightFolder.length == 1) {
+        		fileAttributes.setReadable(1);
+            	fileAttributes.setWritable(0);
+        	}else {
+        		fileAttributes.setReadable(foldername.getReadable().equalsIgnoreCase("1") ? 1 : 0);
+        		fileAttributes.setWritable(foldername.getWritable().equalsIgnoreCase("1") ? 1 : 0);
+        	}
+        	
+        	
+        	
+        }
+        
+
+        String filename = file.getName();
+        if (file.isDirectory()) {
+            fileData.setType(FileType.folder);
+        } else {
+            fileData.setType(FileType.file);
+            Dimension dim = new Dimension(0, 0);
+            if (fileAttributes.isReadable()) {
+                fileAttributes.setSize(file.length());
+                if (isAllowedImageExt(getExtension(filename))) {
+                    if (file.length() > 0) {
+                        dim = ImageUtils.getImageSize(docRoot.getPath() + path);
+                    }
+                }
+            }
+            fileAttributes.setWidth((int)dim.getWidth());
+            fileAttributes.setHeight((int)dim.getHeight());
+        }
+
+        fileAttributes.setName(filename);
+        fileAttributes.setPath(getDynamicPath(path));
+
+        fileAttributes.setModified(attr.lastModifiedTime().toMillis() / 1000);
+        fileAttributes.setCreated(attr.creationTime().toMillis() / 1000);
+
+        fileData.setAttributes(fileAttributes);
+
+        return fileData;
+    }
+    
+    
     public FileData getFileInfo(String path) throws FileManagerException {
 
         FileData fileData = new FileData();
@@ -283,6 +437,113 @@ public class LocalFileManager extends AbstractFileManager {
         return getFileInfo(finalTargetPath);
     }
 
+    /*
+     * 
+     * 
+     * 
+     * LocalDateTime localdatetime = LocalDateTime.now();
+    	ZoneId zoneId = ZoneId.systemDefault(); // or: ZoneId.of("Europe/Oslo");
+    	
+    	long expireTime = localdatetime.atZone(zoneId).toEpochSecond();*/
+    
+    @Override
+    public FileData actionMoveDelete(String sourcePath, String targetPath) throws FileManagerException {
+
+    	
+    	LocalDateTime localdatetime = LocalDateTime.now();
+    	ZoneId zoneId = ZoneId.systemDefault(); // or: ZoneId.of("Europe/Oslo");
+    	
+    	long expireTime = localdatetime.atZone(zoneId).toEpochSecond();
+    	
+    	String pattern = "dd_MM_yyyy_HH_mm";
+    	//String pattern = "EEEEE_MMMMM_yyyy_HH_mm";
+    	SimpleDateFormat simpleDateFormat =new SimpleDateFormat(pattern, new Locale("fr", "FR"));
+    	String date = simpleDateFormat.format(new Date());    	
+    	
+    	
+        File sourceFile = getFile(sourcePath);
+        String filename = sourceFile.getName();
+        
+        
+        String[] arraySourcePath = sourcePath.split("/");
+        
+        String pathSource = "";
+        
+        for(int i = 0 ; i < arraySourcePath.length-1 ; i++) {
+        	pathSource = pathSource+arraySourcePath[i]+"/";
+        }
+        
+        String nomsansextension = FileUtils.getBaseName(filename);
+        String extension = FileUtils.getExtension(filename);
+        
+        filename = nomsansextension+"_"+date+"."+extension;
+        
+        File targetDir = getFile(targetPath + pathSource);
+        
+        if(!targetDir.exists()) {
+        	targetDir.mkdirs();
+        }
+        
+        
+        File targetFile = getFile(targetPath + pathSource + "/" + filename);
+
+        String finalTargetPath = targetPath + pathSource + filename + (sourceFile.isDirectory() ? "/" : "");
+
+        if (!targetDir.isDirectory()) {
+            throw new FileManagerException(ClientErrorMessage.DIRECTORY_NOT_EXIST, Collections.singletonList(targetPath));
+        }
+
+        // check if not requesting main FM userfiles folder
+        if (sourceFile.equals(docRoot)) {
+            throw new FileManagerException(ClientErrorMessage.NOT_ALLOWED);
+        }
+
+        // check permissions
+        checkPath(sourceFile);
+        checkPath(targetDir);
+        checkReadPermission(sourceFile);
+        checkWritePermission(sourceFile);
+        checkWritePermission(targetDir);
+        checkRestrictions(sourceFile);
+        checkRestrictions(targetFile);
+
+        // check if file already exists
+        if (targetFile.exists()) {
+            if (targetFile.isDirectory()) {
+                throw new FileManagerException(ClientErrorMessage.DIRECTORY_ALREADY_EXISTS, Collections.singletonList(targetPath));
+            } else {
+                throw new FileManagerException(ClientErrorMessage.FILE_ALREADY_EXISTS, Collections.singletonList(targetPath));
+            }
+        }
+
+        try {
+
+            Files.move(sourceFile.toPath(), targetFile.toPath());
+            File thumbnailFile = new File(getThumbnailPath(sourcePath));
+            if (thumbnailFile.exists()) {
+                if (thumbnailFile.isFile()) {
+                    File newThumbnailFile = new File(getThumbnailPath(targetPath + filename));
+                    Files.createDirectories(newThumbnailFile.getParentFile().toPath());
+                    Files.move(thumbnailFile.toPath(), newThumbnailFile.toPath());
+
+                } else {
+                    FileUtils.removeDirectory(thumbnailFile.toPath());
+                }
+            }
+
+        } catch (IOException e) {
+            if (sourceFile.isDirectory()) {
+                throw new FileManagerException("ERROR_MOVING_DIRECTORY", Collections.singletonList(targetPath));
+            } else {
+                throw new FileManagerException("ERROR_MOVING_FILE", Collections.singletonList(targetPath));
+            }
+
+        }
+
+        return getFileInfo(finalTargetPath);
+    }
+    
+    
 
     @Override
     public FileData actionDelete(String path) throws FileManagerException {
@@ -787,8 +1048,10 @@ public class LocalFileManager extends AbstractFileManager {
                     try {
 
                         File currentFile = file.toFile();
-                        if (isMatchRestriction(currentFile) && currentFile.getName().toLowerCase().startsWith(searchedTerm.toLowerCase())) {
+                        if (isMatchRestriction(currentFile) && currentFile.getName().toLowerCase().contains(searchedTerm.toLowerCase())) {
                             fileDataList.add(getFileInfo(getRelativePath(currentFile)));
+                        }else {
+                        	System.out.println(currentFile);
                         }
 
                     } catch (FileManagerException silent) {} finally {
@@ -806,7 +1069,7 @@ public class LocalFileManager extends AbstractFileManager {
                     if (exc == null) {
                         try{
                         File currentFile = dir.toFile();
-                        if (isMatchRestriction(currentFile) && currentFile.getName().toLowerCase().startsWith(searchedTerm.toLowerCase())) {
+                        if (isMatchRestriction(currentFile) && currentFile.getName().toLowerCase().contains(searchedTerm.toLowerCase())) {
                             fileDataList.add(getFileInfo(getRelativePath(currentFile) + "/"));
                         }
                         } catch (FileManagerException silent) {} finally {}
@@ -881,7 +1144,7 @@ public class LocalFileManager extends AbstractFileManager {
 
     protected File getThumbnailDir() throws FileManagerException {
 
-        final String fileRoot = propertiesConfig.getProperty("fileRoot", "");
+        final String fileRoot = propertiesConfig.getProperty("fileRoot");
         final String thumbnailDirPath = propertiesConfig.getProperty("images.thumbnail.dir");
         final String thumbnailDefaultDirName = "_thumbs";
         File thumbnailDirFile = null;
